@@ -2,12 +2,46 @@
 
 import sys
 
+
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+
+        self.ram = [0] * 256  # allocate 256 bytes of memory
+        self.reg = [0] * 8  # reg
+        self.pc = 0  # Program Counter, current index, pointer to currently executing instruction
+        self.stack_pointer = 7  # Because it will live in reg spot 7
+        self.less = 0
+        self.greater = 0
+        self.equal = 0
+
+        # ---------------------
+        self.ADD = 0b10100000
+        self.CALL = 0b01010000
+        self.HLT = 0b00000001
+        self.LDI = 0b10000010
+        self.MUL = 0b10100010
+        self.POP = 0b01000110
+        self.PRN = 0b01000111
+        self.PUSH = 0b01000101
+        self.RET = 0b00010001
+        # --------------------
+
+        # -----------------------
+        self.CMP = 0b10100111
+        self.JEQ = 0b01010101
+        self.JMP = 0b01010100
+        self.JNE = 0b01010110
+        # ---------------------
+    
+   
+    def ram_read(self, address):
+        return self.ram[address]
+
+    def ram_write(self, val, address):
+        self.ram[address] = val
 
     def load(self):
         """Load a program into memory."""
@@ -62,4 +96,24 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        pass
+        while True:
+
+         
+            instruction_register = self.ram[self.pc]
+            operand_x = self.ram_read(self.pc + 1)
+            operand_y = self.ram_read(self.pc + 2)
+
+            if instruction_register is self.LDI:
+                self.reg[operand_x] = operand_y
+                self.pc += 3
+
+            elif instruction_register is self.PRN:
+                print(self.reg[operand_x])  # print the register at that place
+                self.pc += 2    # increments by 2 to pass the arguments
+
+            elif instruction_register is self.HLT:
+                break
+
+            else:
+                print(f"Unknown instruction at index: \t {self.pc}")
+                sys.exit(1)
