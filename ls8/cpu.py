@@ -16,6 +16,7 @@ class CPU:
         self.less = 0
         self.greater = 0
         self.equal = 0
+        self.blank = ""  # better readability
 
         # ---------------------
         self.ADD = 0b10100000
@@ -47,30 +48,30 @@ class CPU:
         """Load a program into memory."""
 
         address = 0
-
-        # For now, we've just hardcoded a program:
-
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
-
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+        with open(sys.argv[1]) as program:
+            for row in program:
+                row = row.split("#")[0].strip()
+                if row is self.blank:
+                    continue
+                value = int(row, 2)  # set value to the number, of base 2
+                print(f"\t\tdef load-> binary: {value: 08b}: \t decimal: {value}")
+                self.ram[address] = value
+                address += 1
 
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
-
-        if op == "ADD":
+        if op == "ADD":  # add
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        elif op == "MUL":  # multiply
+            self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "CMP":  # compare
+            if self.reg[reg_a] < self.reg[reg_b]:
+                self.less = 1
+            elif self.reg[reg_a] > self.reg[reg_b]:
+                self.greater = 1
+            elif self.reg[reg_a] == self.reg[reg_b]:
+                self.equal = 1
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -110,7 +111,53 @@ class CPU:
             elif instruction_register is self.PRN:
                 print(self.reg[operand_x])  # print the register at that place
                 self.pc += 2    # increments by 2 to pass the arguments
+            elif instruction_register is self.ADD:
+                self.alu("ADD", operand_x, operand_y)
+                self.pc += 3
 
+            elif instruction_register is self.MUL:
+                self.alu("MUL", operand_x, operand_y)
+                self.pc += 3
+
+            elif instruction_register is self.CMP:
+                self.alu("CMP", operand_x, operand_y)
+                self.pc += 3
+
+            elif instruction_register is self.POP:
+                self.reg[operand_x] = self.ram[self.stack_pointer]
+                self.stack_pointer += 1
+                self.pc += 2
+
+            elif instruction_register is self.PUSH:
+                self.stack_pointer -= 1
+                self.ram[self.stack_pointer] = self.reg[operand_x]
+                self.pc += 2
+
+            elif instruction_register is self.CALL:
+                self.reg[self.stack_pointer] -= 1
+                self.ram[self.stack_pointer] = self.pc + 2
+                self.pc = self.reg[operand_x]
+
+            elif instruction_register is self.RET:
+                self.pc = self.ram[self.stack_pointer]
+                self.reg[self.stack_pointer] += 1
+
+            # "jumping to an address" is the same as setting the pc to that address.
+            elif instruction_register is self.JMP:
+                self.pc = self.reg[operand_x]
+
+            elif instruction_register is self.JEQ:
+                if self.equal == 1:
+                    self.pc = self.reg[operand_x]
+                else:
+                    self.pc += 2
+
+            elif instruction_register is self.JNE:
+                if self.equal == 0:
+                    self.pc = self.reg[operand_x]
+                else:
+                    self.pc += 2
+                    
             elif instruction_register is self.HLT:
                 break
 
